@@ -2,8 +2,48 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
+import { useEffect, useState } from 'react';
+import {PassportReader} from '@gitcoinco/passport-sdk-reader';
+import { useAccount } from "wagmi";
+let verifier;
+import ('@gitcoinco/passport-sdk-verifier').then(ver => verifier = new ver.PassportVerifier());
+let scorer
+import ('@gitcoinco/passport-sdk-scorer').then(sco => scorer = sco)
+
+const reader = new PassportReader("https://ceramic.passport-iam.gitcoin.co", "1");
 
 const Home: NextPage = () => {
+
+  let  account  = useAccount();
+  const [score, setScore] = useState(0);
+  useEffect(() => {
+    async function getData(){
+      const Passport = await reader.getPassport(account.address!);
+      console.log("Passport:", Passport);
+      const verified = await verifier.verifyPassport(Passport);
+      console.log("Verified:", verified);
+      const score1 = new scorer.PassportScorer([
+        {
+          provider:'Twitter',
+          issuer:'did:key:z6MkghvGHLobLEdj1bgRLhS4LPGJAvbMA1tn2zcRyqmYU5LC',
+          score:0.5
+        },
+        {
+          provider:'Google',
+          issuer:'did:key:z6MkghvGHLobLEdj1bgRLhS4LPGJAvbMA1tn2zcRyqmYU5LC',
+          score:0.5
+        }
+      ],'https://ceramic.passport-iam.gitcoin.co','1'
+      
+      )
+      const score =await score1.getScore(account.address!,Passport);
+      console.log("score:", score);
+      setScore(score);
+
+    }
+    getData();
+  },[account]);
+
   return (
     <div className={styles.container}>
       <Head>
@@ -17,6 +57,12 @@ const Home: NextPage = () => {
 
       <main className={styles.main}>
         <ConnectButton />
+
+        {
+        score >= 1 ? 
+        <div> You have high enough score</div> 
+        : <div> Score not high enough</div>
+        }
 
       </main>
 
